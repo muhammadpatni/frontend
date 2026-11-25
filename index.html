@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Shipment Input | Shipment Manager </title>
+  <title>Shipment Input | LogiRoute</title>
+  <link rel="icon" type="image/svg+xml" href="assets/icons/logo.svg">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -11,101 +12,90 @@
 
   <main class="container">
     <div class="page-title">
-      <h1>Shipment input</h1>
-      <p>Choose containers, a company and warehouses, then pick the products to ship.</p>
+      <h1>Shipment Input</h1>
+      <p>Select containers, warehouses and products to start a new shipment.</p>
     </div>
 
-    <!-- TOP: Shipment input form -->
-    <section class="panel" aria-labelledby="form-title">
-      <div class="panel-head"><h2 id="form-title">Shipment details</h2></div>
+    <!-- Section 1: Shipment Input -->
+    <section class="panel panel-top panel-pad section" aria-labelledby="sec1">
+      <div class="panel-head">
+        <h2 class="panel-title" id="sec1"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-truck"></use></svg>Shipment Input</h2>
+      </div>
       <div class="form-grid">
         <div class="field">
-          <span class="field-label" id="containerLabel">Containers</span>
-          <div id="containerSelect" aria-labelledby="containerLabel"></div>
-          <p class="hint">Select one or more containers.</p>
-          <ul class="chips" id="containerChips" aria-live="polite"></ul>
+          <div class="field-label" id="containerLabel"><svg class="icon" aria-hidden="true"><use href="#i-container"></use></svg>Containers</div>
+          <div id="containerSelect" role="group" aria-labelledby="containerLabel"></div>
+          <p class="hint" id="containerHint"></p>
         </div>
-
         <div class="field">
-          <label for="companySelect">Company</label>
-          <select id="companySelect"></select>
-          <p class="hint">Its products appear in the grid below. You can switch companies at any time.</p>
-        </div>
-
-        <div class="field">
-          <span class="field-label" id="warehouseLabel">Warehouses</span>
-          <div id="warehouseSelect" aria-labelledby="warehouseLabel"></div>
-          <p class="hint">Select where the shipment should be delivered.</p>
-          <ul class="chips" id="warehouseChips" aria-live="polite"></ul>
+          <div class="field-label" id="warehouseLabel"><svg class="icon" aria-hidden="true"><use href="#i-warehouse"></use></svg>Warehouses</div>
+          <div id="warehouseSelect" role="group" aria-labelledby="warehouseLabel"></div>
+          <p class="hint" id="warehouseHint"></p>
         </div>
       </div>
     </section>
 
-    <!-- BOTTOM: Full-width product selection grid -->
-    <section class="panel" aria-labelledby="products-title">
+    <!-- Section 2: Product Selection (products left, company right) -->
+    <section class="panel panel-pad section" aria-labelledby="sec2">
       <div class="panel-head">
-        <div>
-          <h2 id="products-title">Product selection</h2>
-          <p>Tick products and mark each as Normal or Mandatory. Mandatory products are never dropped silently.</p>
+        <h2 class="panel-title" id="sec2"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-box"></use></svg>Product Selection</h2>
+        <span class="count-pill">Total Products: <strong id="totalCount">0</strong></span>
+      </div>
+
+      <div class="product-grid">
+        <div class="product-main">
+          <div class="field">
+            <div class="field-label" id="productLabel"><svg class="icon" aria-hidden="true"><use href="#i-box"></use></svg>Products</div>
+            <div id="productSelect" role="group" aria-labelledby="productLabel"></div>
+          </div>
+          <div class="field">
+            <div class="field-label" id="mandatoryLabel"><svg class="icon" aria-hidden="true"><use href="#i-flag"></use></svg>Mandatory products <span class="optional">Optional</span></div>
+            <div id="mandatorySelect" role="group" aria-labelledby="mandatoryLabel"></div>
+            <p class="hint" id="mandatoryHint"></p>
+          </div>
         </div>
-        <span class="sub" id="availableCount"></span>
+
+        <div class="product-side">
+          <label class="field-label" for="companySelect"><svg class="icon" aria-hidden="true"><use href="#i-building"></use></svg>Company</label>
+          <div class="select-wrap">
+            <svg class="icon" aria-hidden="true"><use href="#i-building"></use></svg>
+            <select id="companySelect"></select>
+            <svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg>
+          </div>
+          <p class="hint" id="companyHint"></p>
+        </div>
       </div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th class="col-check"><input type="checkbox" id="selectAll" aria-label="Select all products of this company"></th>
-              <th>Product</th>
-              <th class="num">Price</th>
-              <th class="num">Weight</th>
-              <th class="num">Volume</th>
-              <th>Selection type</th>
-            </tr>
-          </thead>
-          <tbody id="availableBody"></tbody>
-        </table>
-      </div>
-
-      <div class="subhead">
-        <h2>Selected products <span class="sub" id="selectedCount"></span></h2>
-        <button type="button" class="btn-link" id="clearProducts" hidden>Clear all</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Company</th>
-              <th>Product</th>
-              <th class="num">Price</th>
-              <th class="num">Weight</th>
-              <th class="num">Volume</th>
-              <th>Selection type</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="selectedBody"></tbody>
-          <tfoot id="selectedFoot"></tfoot>
-        </table>
-      </div>
+      <div class="totals" id="totals" aria-live="polite"></div>
     </section>
 
-    <!-- Summary -->
-    <section class="panel" aria-labelledby="summary-title">
-      <div class="panel-head"><h2 id="summary-title">Shipment summary</h2></div>
-      <div id="summary"></div>
+    <!-- Shipment Summary (below the product grid) -->
+    <section class="panel panel-pad section" aria-labelledby="sec3">
+      <div class="panel-head">
+        <h2 class="panel-title" id="sec3"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-route"></use></svg>Shipment Summary</h2>
+      </div>
+      <dl class="summary-strip" aria-live="polite">
+        <div class="sum-cell"><dt><svg class="icon" aria-hidden="true"><use href="#i-container"></use></svg>Containers</dt><dd id="sumContainers">0</dd></div>
+        <div class="sum-cell"><dt><svg class="icon" aria-hidden="true"><use href="#i-building"></use></svg>Companies</dt><dd id="sumCompanies">0</dd></div>
+        <div class="sum-cell"><dt><svg class="icon" aria-hidden="true"><use href="#i-box"></use></svg>Products</dt><dd id="sumProducts">0</dd></div>
+        <div class="sum-cell"><dt><svg class="icon" aria-hidden="true"><use href="#i-flag"></use></svg>Mandatory</dt><dd id="sumMandatory">0</dd></div>
+        <div class="sum-cell"><dt><svg class="icon" aria-hidden="true"><use href="#i-warehouse"></use></svg>Warehouses</dt><dd id="sumWarehouses">0</dd></div>
+      </dl>
+      <ul class="summary-wh" id="sumWarehouseList"></ul>
     </section>
 
-    <!-- Start -->
     <div id="messages" class="messages" aria-live="assertive"></div>
     <div class="action-bar">
-      <p>You need at least one container, one product and one warehouse.</p>
-      <button type="button" class="btn btn-primary btn-large" id="startBtn">Start Shipment Processing</button>
+      <p>At least one container, one product and one warehouse are required.</p>
+      <button type="button" class="btn btn-primary btn-large" id="startBtn">
+        <svg class="icon" aria-hidden="true"><use href="#i-truck"></use></svg>Start Shipment Processing<svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
+      </button>
     </div>
   </main>
 
   <script src="js/data.js"></script>
   <script src="js/common.js"></script>
+  <script src="js/validation.js"></script>
   <script src="js/input.js"></script>
 </body>
 </html>

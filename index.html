@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shipment Input | Shipment Manager </title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="app-header"></header>
+
+  <main class="container">
+    <div class="page-title">
+      <h1>Shipment input</h1>
+      <p>Choose containers, a company and warehouses, then pick the products to ship.</p>
+    </div>
+
+    <!-- TOP: Shipment input form -->
+    <section class="panel" aria-labelledby="form-title">
+      <div class="panel-head"><h2 id="form-title">Shipment details</h2></div>
+      <div class="form-grid">
+        <div class="field">
+          <span class="field-label" id="containerLabel">Containers</span>
+          <div id="containerSelect" aria-labelledby="containerLabel"></div>
+          <p class="hint">Select one or more containers.</p>
+          <ul class="chips" id="containerChips" aria-live="polite"></ul>
+        </div>
+
+        <div class="field">
+          <label for="companySelect">Company</label>
+          <select id="companySelect"></select>
+          <p class="hint">Its products appear in the grid below. You can switch companies at any time.</p>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="warehouseLabel">Warehouses</span>
+          <div id="warehouseSelect" aria-labelledby="warehouseLabel"></div>
+          <p class="hint">Select where the shipment should be delivered.</p>
+          <ul class="chips" id="warehouseChips" aria-live="polite"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- BOTTOM: Full-width product selection grid -->
+    <section class="panel" aria-labelledby="products-title">
+      <div class="panel-head">
+        <div>
+          <h2 id="products-title">Product selection</h2>
+          <p>Tick products and mark each as Normal or Mandatory. Mandatory products are never dropped silently.</p>
+        </div>
+        <span class="sub" id="availableCount"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="selectAll" aria-label="Select all products of this company"></th>
+              <th>Product</th>
+              <th class="num">Price</th>
+              <th class="num">Weight</th>
+              <th class="num">Volume</th>
+              <th>Selection type</th>
+            </tr>
+          </thead>
+          <tbody id="availableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="subhead">
+        <h2>Selected products <span class="sub" id="selectedCount"></span></h2>
+        <button type="button" class="btn-link" id="clearProducts" hidden>Clear all</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Product</th>
+              <th class="num">Price</th>
+              <th class="num">Weight</th>
+              <th class="num">Volume</th>
+              <th>Selection type</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="selectedBody"></tbody>
+          <tfoot id="selectedFoot"></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <!-- Summary -->
+    <section class="panel" aria-labelledby="summary-title">
+      <div class="panel-head"><h2 id="summary-title">Shipment summary</h2></div>
+      <div id="summary"></div>
+    </section>
+
+    <!-- Start -->
+    <div id="messages" class="messages" aria-live="assertive"></div>
+    <div class="action-bar">
+      <p>You need at least one container, one product and one warehouse.</p>
+      <button type="button" class="btn btn-primary btn-large" id="startBtn">Start Shipment Processing</button>
+    </div>
+  </main>
+
+  <script src="js/data.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/input.js"></script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogiRoute | Input Shipment</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- ================= SECTION 1: HEADER & NAVIGATION ================= -->
+    <header class="app-header" id="section-header">
+
+      <div class="brand">
+        <!-- INSERT YOUR LOGO IMAGE HERE: replace the src path below with your logo file -->
+        <img class="brand__logo" src="logo.jpeg" alt="LogiRoute logo">
+
+        <h1 class="brand__title">LogiRoute</h1>
+      </div>
+
+      <nav class="main-nav" aria-label="Main navigation">
+        <a class="nav-btn is-active" href="index.html" data-page="input-shipment" aria-current="page">
+          <svg class="nav-btn__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
+          <span>Input Shipment</span>
+        </a>
+
+        <!-- Placeholder for a future page: update href when the Processing page exists -->
+        <a class="nav-btn" href="#processing" data-page="processing">
+          <svg class="nav-btn__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg>
+          <span>Processing</span>
+        </a>
+
+        <!-- Placeholder for a future page: update href when the Shipment Output page exists -->
+        <a class="nav-btn" href="#shipment-output" data-page="shipment-output">
+          <svg class="nav-btn__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h11v10H2zM13 9h4l4 3.5V16h-8z"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>
+          <span>Shipment Output</span>
+        </a>
+      </nav>
+
+    </header>
+
+    <!-- Remaining page area: Sections 2, 3 and 4 -->
+    <main class="page-content" id="page-content">
+
+      <!-- ================= SECTION 2: CONTAINER & WAREHOUSE SELECTION ================= -->
+      <section class="selection-section" id="section-selection" aria-label="Container and warehouse selection">
+        <div class="ms" id="container-select"></div>
+        <div class="ms" id="warehouse-select"></div>
+      </section>
+
+      <!-- ================= SECTION 3: PRODUCT SELECTION GRID ================= -->
+      <section class="product-section" id="section-products" aria-label="Product selection">
+
+        <div class="ps-head">
+          <h2 class="ps-title">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
+            <span>Product Selection</span>
+          </h2>
+          <span class="ps-meta" id="product-meta" aria-live="polite"></span>
+        </div>
+
+        <div class="ps-body">
+          <div class="product-panel">
+            <div class="product-grid" id="product-grid" role="table" aria-label="Products"></div>
+          </div>
+
+          <aside class="company-panel" aria-label="Company selection">
+            <div class="ms" id="company-select"></div>
+            <dl class="company-info" id="company-info"></dl>
+          </aside>
+        </div>
+
+        <footer class="summary-footer" id="summary-footer" aria-label="Selected products summary" aria-live="polite"></footer>
+
+      </section>
+
+      <!-- ================= SECTION 4: SHIPMENT SUMMARY & START PROCESSING ================= -->
+      <section class="shipment-section" id="section-shipment" aria-label="Shipment summary and processing">
+
+        <div class="shipment-summary">
+          <div class="ss-head">
+            <h2 class="ss-title">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM8.5 12h7M8.5 16h5"/></svg>
+              <span>Shipment Summary</span>
+            </h2>
+            <span class="ss-status" id="ss-status"></span>
+          </div>
+          <div class="ss-grid" id="ss-grid"></div>
+        </div>
+
+        <div class="shipment-action">
+          <button type="button" class="start-btn" id="start-btn">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg>
+            <span>Start Shipment Processing</span>
+          </button>
+          <div class="shipment-msg" id="shipment-msg" role="status" aria-live="polite" hidden></div>
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

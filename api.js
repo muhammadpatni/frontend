@@ -32,7 +32,7 @@ async function main() {
 
     const data = await GetData({
         tablename: "Containers",
-        Whereclause: "WHERE ContainerID = 1"
+        Whereclause: ""
     });
 
     console.log(data);

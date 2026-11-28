@@ -1,4 +1,27 @@
-/* ===================== LogiRoute – script.js ===================== */
+/* ===================== LogiRoute – script.js (API version) ===================== */
+
+/* ---------- API ---------- */
+const base_url = "http://localhost:5227/Datasouce";
+
+async function GetData(params) {
+  try {
+    const response = await fetch(base_url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.Error || result.Message || `HTTP Error: ${response.status}`);
+    }
+    return result; // Direct array of objects
+  } catch (error) {
+    console.error("GetData Error:", error.message);
+    throw error;
+  }
+}
 
 /* ---------- Page routes (ready for future backend/page integration) ---------- */
 const PAGES = {
@@ -15,57 +38,105 @@ const Navigation = (() => {
     navButtons().forEach((btn) => {
       const isActive = btn.dataset.page === pageKey;
       btn.classList.toggle("is-active", isActive);
-      if (isActive) {
-        btn.setAttribute("aria-current", "page");
-      } else {
-        btn.removeAttribute("aria-current");
-      }
+      if (isActive) btn.setAttribute("aria-current", "page");
+      else btn.removeAttribute("aria-current");
     });
   }
 
   function handleClick(event) {
     const btn = event.currentTarget;
     const page = PAGES[btn.dataset.page];
-
-    // Pages that do not exist yet: keep the button interactive but do not navigate.
-    if (!page || !page.ready) {
-      event.preventDefault();
-    }
-    // When a page becomes ready, set `ready: true` and its `url` in PAGES,
-    // and point the link's href to it in index.html.
+    if (!page || !page.ready) event.preventDefault();
   }
 
   function init() {
     navButtons().forEach((btn) => btn.addEventListener("click", handleClick));
-    setActive("input-shipment"); // Current page
+    setActive("input-shipment");
   }
 
   return { init, setActive };
 })();
+
+/* ===================== Data (filled from the API) ===================== */
+/* These arrays/objects are filled IN PLACE after the API call, so every
+   section keeps working with the same references. */
+const CONTAINERS = [];   // { id, type, weightCapacityKg, volumeCapacityM3 }
+const WAREHOUSES = [];   // { id, name, maxWeightKg, maxVolumeM3 }
+const COMPANIES  = [];   // { id, name }
+const PRODUCTS   = [];   // { id, companyId, name, weightKg, volumeM3, price }
+
+const COMPANY_BY_ID = {};
+const PRODUCT_BY_ID = {};
+
+const CURRENCY = "Rs";
+
+/* ---------- API tables ---------- */
+const TABLES = {
+  containers: "Containers",
+  warehouses: "Warehouses",
+  products:   "Products",
+  companies:  "Companies"
+};
+
+/* ---------- Key mapping (API keys -> keys used by the UI) ---------- */
+const pick = (row, ...keys) => {
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null) return row[key];
+  }
+  return undefined;
+};
+const num = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
+const asRows = (result) => (Array.isArray(result) ? result : (result && (result.data || result.Data)) || []);
+
+const mapContainer = (r) => ({
+  id: String(pick(r, "ContainerID", "ContainerId")),
+  type: pick(r, "ContainerName") ?? "Container",
+  weightCapacityKg: num(pick(r, "MaxWeight")),
+  volumeCapacityM3: num(pick(r, "MaxVolume"))
+});
+
+const mapWarehouse = (r) => ({
+  id: String(pick(r, "WarehouseID", "WarehouseId")),
+  name: pick(r, "WarehouseName") ?? "Warehouse",
+  maxWeightKg: num(pick(r, "MaxWeight")),
+  maxVolumeM3: num(pick(r, "MaxVolume"))
+});
+
+const mapProduct = (r) => ({
+  id: String(pick(r, "ProductID", "ProductId")),
+  companyId: String(pick(r, "CompanyID", "CompanyId")),
+  name: pick(r, "ProductName") ?? "Product",
+  weightKg: num(pick(r, "Weight")),
+  volumeM3: num(pick(r, "Volume")),
+  price: num(pick(r, "Price"))
+});
+
+/* Companies keys not final yet: CompanyID + CompanyName expected */
+const mapCompany = (r) => {
+  const id = String(pick(r, "CompanyID", "CompanyId", "ID"));
+  return { id, name: pick(r, "CompanyName", "Name") ?? `Company ${id}` };
+};
+
+async function fetchAllData() {
+  const [containers, warehouses, products, companies] = await Promise.all(
+    [TABLES.containers, TABLES.warehouses, TABLES.products, TABLES.companies]
+      .map((tablename) => GetData({ tablename, Whereclause: "" }))
+  );
+
+  CONTAINERS.length = 0; CONTAINERS.push(...asRows(containers).map(mapContainer));
+  WAREHOUSES.length = 0; WAREHOUSES.push(...asRows(warehouses).map(mapWarehouse));
+  COMPANIES.length  = 0; COMPANIES.push(...asRows(companies).map(mapCompany));
+  PRODUCTS.length   = 0; PRODUCTS.push(...asRows(products).map(mapProduct));
+
+  Object.keys(COMPANY_BY_ID).forEach((k) => delete COMPANY_BY_ID[k]);
+  Object.keys(PRODUCT_BY_ID).forEach((k) => delete PRODUCT_BY_ID[k]);
+  COMPANIES.forEach((c) => { COMPANY_BY_ID[c.id] = c; });
+  PRODUCTS.forEach((p) => { PRODUCT_BY_ID[p.id] = p; });
+}
+
+const companyOf = (companyId) => COMPANY_BY_ID[companyId] || { id: companyId, name: "Unknown company" };
+
 /* ===================== Section 2: Container & Warehouse Selection ===================== */
-
-/* ---------- Dummy data (replace with API responses later) ---------- */
-const CONTAINERS = [
-  { id: "CNT-001", type: "20 ft Standard",   weightCapacityKg: 28200, volumeCapacityM3: 33.2 },
-  { id: "CNT-002", type: "40 ft Standard",   weightCapacityKg: 26700, volumeCapacityM3: 67.7 },
-  { id: "CNT-003", type: "40 ft High Cube",  weightCapacityKg: 26500, volumeCapacityM3: 76.3 },
-  { id: "CNT-004", type: "20 ft Reefer",     weightCapacityKg: 27400, volumeCapacityM3: 28.3 },
-  { id: "CNT-005", type: "40 ft Reefer",     weightCapacityKg: 29500, volumeCapacityM3: 59.3 },
-  { id: "CNT-006", type: "20 ft Open Top",   weightCapacityKg: 28000, volumeCapacityM3: 32.5 },
-  { id: "CNT-007", type: "40 ft Flat Rack",  weightCapacityKg: 40000, volumeCapacityM3: 54.0 },
-  { id: "CNT-008", type: "45 ft High Cube",  weightCapacityKg: 27600, volumeCapacityM3: 86.0 }
-];
-
-const WAREHOUSES = [
-  { id: "WH-01", name: "Port Qasim Hub",     location: "Karachi",    totalCapacityM3: 12000, availableCapacityM3: 7400 },
-  { id: "WH-02", name: "Ravi Distribution",  location: "Lahore",     totalCapacityM3: 9000,  availableCapacityM3: 3200 },
-  { id: "WH-03", name: "Capital Depot",      location: "Islamabad",  totalCapacityM3: 6500,  availableCapacityM3: 5100 },
-  { id: "WH-04", name: "Textile City Store", location: "Faisalabad", totalCapacityM3: 8000,  availableCapacityM3: 1800 },
-  { id: "WH-05", name: "South Punjab Hub",   location: "Multan",     totalCapacityM3: 5500,  availableCapacityM3: 4300 },
-  { id: "WH-06", name: "Frontier Depot",     location: "Peshawar",   totalCapacityM3: 4800,  availableCapacityM3: 2600 },
-  { id: "WH-07", name: "Indus Warehouse",    location: "Hyderabad",  totalCapacityM3: 7000,  availableCapacityM3: 6100 },
-  { id: "WH-08", name: "Sialkot Export Hub", location: "Sialkot",    totalCapacityM3: 3800,  availableCapacityM3: 900 }
-];
 
 /* ---------- Icons (inline SVG, no emoji) ---------- */
 const ICONS = {
@@ -82,7 +153,15 @@ const ICONS = {
 const icon = (name) =>
   `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
 
-const formatNumber = (value) => Number(value).toLocaleString("en-US");
+const formatNumber = (value) =>
+  Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 });
+const formatWeight = (value) =>
+  Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 });
+const formatVolume = (value) =>
+  Number(value).toLocaleString("en-US", { maximumFractionDigits: 3 });
+const formatMoney = (value) => `${CURRENCY} ${formatNumber(value)}`;
+const round2 = (value) => Math.round(value * 100) / 100;
+const round3 = (value) => Math.round(value * 1000) / 1000;
 
 const escapeHtml = (value) =>
   String(value).replace(/[&<>"']/g, (ch) =>
@@ -110,7 +189,6 @@ function createMultiSelect(config) {
   }
 
   function notify() {
-    // Lets future sections react to selection changes
     document.dispatchEvent(new CustomEvent("selection:change", {
       detail: { type, selected: getSelected() }
     }));
@@ -142,7 +220,7 @@ function createMultiSelect(config) {
                       role="option" id="${rootId}-opt-${index}" data-id="${escapeHtml(item.id)}" aria-selected="${selected}">
             <span class="ms__option-icon">${icon(itemIcon)}</span>
             <span class="ms__option-main">
-              <span class="ms__option-title">${escapeHtml(getTitle(item))}<span class="ms__option-id">${escapeHtml(item.id)}</span></span>
+              <span class="ms__option-title">${escapeHtml(getTitle(item))}<span class="ms__option-id">#${escapeHtml(item.id)}</span></span>
               <span class="ms__option-stats">${stats}</span>
             </span>
             <span class="ms__option-check">${icon("check")}</span>
@@ -183,11 +261,8 @@ function createMultiSelect(config) {
   }
 
   function toggle(id) {
-    if (selectedIds.has(id)) {
-      selectedIds.delete(id);
-    } else {
-      selectedIds.add(id);
-    }
+    if (selectedIds.has(id)) selectedIds.delete(id);
+    else selectedIds.add(id);
     refresh();
   }
 
@@ -257,7 +332,6 @@ function createMultiSelect(config) {
     optionsEl = root.querySelector(".ms__options");
     countEl   = root.querySelector(".ms__count");
 
-    // Tags, input and arrow button
     control.addEventListener("click", (event) => {
       const removeBtn = event.target.closest(".ms__chip-remove");
       if (removeBtn) {
@@ -281,7 +355,6 @@ function createMultiSelect(config) {
     });
     input.addEventListener("keydown", handleKeydown);
 
-    // Options and the "Select all shown" / "Clear all" actions
     menu.addEventListener("click", (event) => {
       const option = event.target.closest(".ms__option");
       if (option) {
@@ -300,7 +373,6 @@ function createMultiSelect(config) {
       input.focus();
     });
 
-    // Close when clicking anywhere outside this dropdown
     document.addEventListener("click", (event) => {
       if (!event.composedPath().includes(root)) close();
     });
@@ -325,8 +397,8 @@ const SelectionSection = (() => {
     getTitle: (c) => c.type,
     getSearchText: (c) => `${c.type} ${c.id}`,
     getStats: (c) => [
-      { icon: "weight", text: `Max ${formatNumber(c.weightCapacityKg)} kg` },
-      { icon: "volume", text: `Max ${formatNumber(c.volumeCapacityM3)} m\u00B3` }
+      { icon: "weight", text: `Max ${formatWeight(c.weightCapacityKg)} kg` },
+      { icon: "volume", text: `Max ${formatVolume(c.volumeCapacityM3)} m\u00B3` }
     ]
   });
 
@@ -340,92 +412,28 @@ const SelectionSection = (() => {
     noun: "warehouses",
     items: WAREHOUSES,
     getTitle: (w) => w.name,
-    getSearchText: (w) => `${w.name} ${w.id} ${w.location}`,
+    getSearchText: (w) => `${w.name} ${w.id}`,
     getStats: (w) => [
-      { icon: "location", text: w.location },
-      { icon: "volume", text: `${formatNumber(w.availableCapacityM3)} m\u00B3 free` }
+      { icon: "weight", text: `Max ${formatWeight(w.maxWeightKg)} kg` },
+      { icon: "volume", text: `Max ${formatVolume(w.maxVolumeM3)} m\u00B3` }
     ]
   });
 
   return {
     init() { containerSelect.init(); warehouseSelect.init(); },
-    getSelectedContainers: containerSelect.getSelected,   // SelectionSection.getSelectedContainers()
-    getSelectedWarehouses: warehouseSelect.getSelected    // SelectionSection.getSelectedWarehouses()
+    getSelectedContainers: containerSelect.getSelected,
+    getSelectedWarehouses: warehouseSelect.getSelected
   };
 })();
+
 /* ===================== Section 3: Product Selection Grid ===================== */
 
-/* ---------- Dummy data (replace with API responses later) ---------- */
-const CURRENCY = "Rs";
-
-const COMPANIES = [
-  { id: "CMP-01", name: "Indus Textiles",       location: "Faisalabad" },
-  { id: "CMP-02", name: "Karachi Electronics",  location: "Karachi" },
-  { id: "CMP-03", name: "Lahore Foods",         location: "Lahore" },
-  { id: "CMP-04", name: "Sialkot Sports Goods", location: "Sialkot" },
-  { id: "CMP-05", name: "Multan Ceramics",      location: "Multan" },
-  { id: "CMP-06", name: "Frontier Leather",     location: "Peshawar" },
-  { id: "CMP-07", name: "Sindh Agro Exports",   location: "Hyderabad" },
-  { id: "CMP-08", name: "Capital Pharma",       location: "Islamabad" }
-];
-
-const PRODUCTS = [
-  { id: "PRD-001", companyId: "CMP-01", name: "Cotton Fabric Rolls",     weightKg: 1200, volumeM3: 3.5,  price: 480000 },
-  { id: "PRD-002", companyId: "CMP-01", name: "Bed Linen Sets",          weightKg: 650,  volumeM3: 4.2,  price: 390000 },
-  { id: "PRD-003", companyId: "CMP-01", name: "Denim Bales",             weightKg: 1800, volumeM3: 5.0,  price: 720000 },
-  { id: "PRD-004", companyId: "CMP-01", name: "Towel Cartons",           weightKg: 900,  volumeM3: 3.8,  price: 310000 },
-
-  { id: "PRD-005", companyId: "CMP-02", name: "LED TV Pallet",           weightKg: 1400, volumeM3: 9.5,  price: 2400000 },
-  { id: "PRD-006", companyId: "CMP-02", name: "Laptop Cartons",          weightKg: 420,  volumeM3: 1.6,  price: 3800000 },
-  { id: "PRD-007", companyId: "CMP-02", name: "Air Conditioner Units",   weightKg: 1900, volumeM3: 12.0, price: 1900000 },
-  { id: "PRD-008", companyId: "CMP-02", name: "Mobile Phone Cartons",    weightKg: 180,  volumeM3: 0.6,  price: 2900000 },
-
-  { id: "PRD-009", companyId: "CMP-03", name: "Basmati Rice Sacks",      weightKg: 5000, volumeM3: 7.2,  price: 1250000 },
-  { id: "PRD-010", companyId: "CMP-03", name: "Cooking Oil Drums",       weightKg: 3200, volumeM3: 4.0,  price: 980000 },
-  { id: "PRD-011", companyId: "CMP-03", name: "Packaged Spices",         weightKg: 700,  volumeM3: 2.8,  price: 640000 },
-  { id: "PRD-012", companyId: "CMP-03", name: "Frozen Chicken Cartons",  weightKg: 2400, volumeM3: 6.5,  price: 870000 },
-
-  { id: "PRD-013", companyId: "CMP-04", name: "Football Cartons",        weightKg: 350,  volumeM3: 5.5,  price: 560000 },
-  { id: "PRD-014", companyId: "CMP-04", name: "Cricket Bat Crates",      weightKg: 480,  volumeM3: 4.6,  price: 830000 },
-  { id: "PRD-015", companyId: "CMP-04", name: "Sportswear Bales",        weightKg: 800,  volumeM3: 6.0,  price: 690000 },
-  { id: "PRD-016", companyId: "CMP-04", name: "Gloves & Gear Boxes",     weightKg: 300,  volumeM3: 2.2,  price: 520000 },
-
-  { id: "PRD-017", companyId: "CMP-05", name: "Tile Pallets",            weightKg: 4200, volumeM3: 3.0,  price: 610000 },
-  { id: "PRD-018", companyId: "CMP-05", name: "Dinner Set Crates",       weightKg: 1100, volumeM3: 4.4,  price: 470000 },
-  { id: "PRD-019", companyId: "CMP-05", name: "Sanitary Ware Units",     weightKg: 2600, volumeM3: 7.8,  price: 880000 },
-  { id: "PRD-020", companyId: "CMP-05", name: "Tableware Cartons",       weightKg: 750,  volumeM3: 3.6,  price: 360000 },
-
-  { id: "PRD-021", companyId: "CMP-06", name: "Leather Jacket Cartons",  weightKg: 520,  volumeM3: 3.4,  price: 1450000 },
-  { id: "PRD-022", companyId: "CMP-06", name: "Footwear Cartons",        weightKg: 640,  volumeM3: 6.8,  price: 950000 },
-  { id: "PRD-023", companyId: "CMP-06", name: "Hide Bundles",            weightKg: 2100, volumeM3: 4.8,  price: 780000 },
-  { id: "PRD-024", companyId: "CMP-06", name: "Handbag Cartons",         weightKg: 260,  volumeM3: 2.5,  price: 1100000 },
-
-  { id: "PRD-025", companyId: "CMP-07", name: "Mango Pulp Drums",        weightKg: 3600, volumeM3: 5.2,  price: 1020000 },
-  { id: "PRD-026", companyId: "CMP-07", name: "Fresh Citrus Crates",     weightKg: 2800, volumeM3: 8.4,  price: 540000 },
-  { id: "PRD-027", companyId: "CMP-07", name: "Sugar Sacks",             weightKg: 5400, volumeM3: 6.0,  price: 830000 },
-  { id: "PRD-028", companyId: "CMP-07", name: "Dates Cartons",           weightKg: 900,  volumeM3: 2.6,  price: 740000 },
-
-  { id: "PRD-029", companyId: "CMP-08", name: "Medicine Cartons",        weightKg: 380,  volumeM3: 1.9,  price: 3200000 },
-  { id: "PRD-030", companyId: "CMP-08", name: "Surgical Supplies",       weightKg: 560,  volumeM3: 3.1,  price: 2100000 },
-  { id: "PRD-031", companyId: "CMP-08", name: "Vaccine Cold Boxes",      weightKg: 210,  volumeM3: 1.2,  price: 4600000 },
-  { id: "PRD-032", companyId: "CMP-08", name: "Medical Equipment Crates",weightKg: 1500, volumeM3: 5.8,  price: 3500000 }
-];
-
-const COMPANY_BY_ID = Object.fromEntries(COMPANIES.map((c) => [c.id, c]));
-const PRODUCT_BY_ID = Object.fromEntries(PRODUCTS.map((p) => [p.id, p]));
-
-/* Extra icons for Section 3 (added without touching the Section 2 ICONS object) */
 Object.assign(ICONS, {
   box:      '<path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
   boxCheck: '<path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="M8.5 12.5l2.5 2.5 4.5-4.5"/>',
   company:  '<path d="M4 21V5l8-2v18"/><path d="M12 9l8 2v10"/><path d="M8 8h.01M8 12h.01M8 16h.01"/>',
   price:    '<path d="M3 12V4h8l10 10-8 8L3 12z"/><circle cx="7.5" cy="8.5" r="1.2"/>'
 });
-
-const formatVolume = (value) =>
-  Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 });
-const formatMoney = (value) => `${CURRENCY} ${formatNumber(value)}`;
-const round3 = (value) => Math.round(value * 1000) / 1000;
 
 /* ---------- Searchable single-select dropdown (company filter) ---------- */
 function createCompanySelect(config) {
@@ -442,7 +450,7 @@ function createCompanySelect(config) {
   function getVisible() {
     const query = input.value.trim().toLowerCase();
     return query
-      ? items.filter((c) => `${c.name} ${c.id} ${c.location}`.toLowerCase().includes(query))
+      ? items.filter((c) => `${c.name} ${c.id}`.toLowerCase().includes(query))
       : items.slice();
   }
 
@@ -470,9 +478,8 @@ function createCompanySelect(config) {
                       role="option" id="${rootId}-opt-${index}" data-id="${escapeHtml(c.id)}" aria-selected="${selected}">
             <span class="ms__option-icon">${icon("company")}</span>
             <span class="ms__option-main">
-              <span class="ms__option-title">${escapeHtml(c.name)}<span class="ms__option-id">${escapeHtml(c.id)}</span></span>
+              <span class="ms__option-title">${escapeHtml(c.name)}<span class="ms__option-id">#${escapeHtml(c.id)}</span></span>
               <span class="ms__option-stats">
-                <span class="ms__stat">${icon("location")}${escapeHtml(c.location)}</span>
                 <span class="ms__stat">${icon("box")}${count} products</span>
               </span>
             </span>
@@ -601,7 +608,7 @@ function createCompanySelect(config) {
       const option = event.target.closest(".ms__option");
       if (option) {
         const id = option.dataset.id;
-        setCompany(id === selectedId ? null : id);   // click the selected company again = show all
+        setCompany(id === selectedId ? null : id);
         input.focus();
         return;
       }
@@ -624,8 +631,7 @@ function createCompanySelect(config) {
 
 /* ---------- Section 3 module ---------- */
 const ProductSection = (() => {
-  // SINGLE SOURCE OF TRUTH: productId -> { mandatory: boolean }
-  // (insertion order = order in which the products were selected)
+  // productId -> { mandatory: boolean }  (insertion order = selection order)
   const selection = new Map();
   let activeCompanyId = null;       // null = all companies
   let gridEl, metaEl, infoEl, footerEl, companySelect;
@@ -637,7 +643,6 @@ const ProductSection = (() => {
     { key: "value",  label: "Total Product Value",     icon: "price" }
   ];
 
-  /* ----- Data helpers (ready to be swapped with API calls) ----- */
   function getProductsByCompany(companyId) {
     return companyId ? PRODUCTS.filter((p) => p.companyId === companyId) : PRODUCTS.slice();
   }
@@ -647,7 +652,7 @@ const ProductSection = (() => {
   function getSelectedProducts() {
     return [...selection].map(([id, state]) => ({
       ...PRODUCT_BY_ID[id],
-      companyName: COMPANY_BY_ID[PRODUCT_BY_ID[id].companyId].name,
+      companyName: companyOf(PRODUCT_BY_ID[id].companyId).name,
       mandatory: state.mandatory
     }));
   }
@@ -660,18 +665,17 @@ const ProductSection = (() => {
       volumeM3 += p.volumeM3;
       value += p.price;
     });
-    return { count: selection.size, weightKg: round3(weightKg), volumeM3: round3(volumeM3), value };
+    return { count: selection.size, weightKg: round3(weightKg), volumeM3: round3(volumeM3), value: round2(value) };
   }
 
-  /* ----- Selection actions ----- */
   function selectProduct(id) {
     if (!PRODUCT_BY_ID[id] || selection.has(id)) return;
-    selection.set(id, { mandatory: false });      // selecting never makes it Mandatory
+    selection.set(id, { mandatory: false });
     afterChange(id);
   }
 
   function deselectProduct(id) {
-    if (!selection.delete(id)) return;            // removing the entry also resets Mandatory
+    if (!selection.delete(id)) return;
     afterChange(id);
   }
 
@@ -681,7 +685,7 @@ const ProductSection = (() => {
 
   function setMandatory(id, value) {
     const state = selection.get(id);
-    if (!state) return;                           // only selected products can be Mandatory
+    if (!state) return;
     state.mandatory = Boolean(value);
     afterChange(id);
   }
@@ -695,7 +699,6 @@ const ProductSection = (() => {
     }));
   }
 
-  /* ----- Rendering (table-style grid) ----- */
   function headHtml() {
     return `<div class="pt-head" role="row">
       <span></span>
@@ -710,7 +713,7 @@ const ProductSection = (() => {
 
   function cardHtml(p) {
     const name = escapeHtml(p.name);
-    const company = escapeHtml(COMPANY_BY_ID[p.companyId].name);
+    const company = escapeHtml(companyOf(p.companyId).name);
     return `<article class="pcard" role="row" data-id="${escapeHtml(p.id)}">
       <span class="pcard__cell">
         <input type="checkbox" class="pcard__check" aria-label="Select ${name}">
@@ -720,7 +723,7 @@ const ProductSection = (() => {
         <span class="pcard__badge" hidden>Mandatory</span>
       </h3>
       <span class="pcard__cell pcard__company" title="${company}">${icon("company")}<span>${company}</span></span>
-      <span class="pcard__cell pcard__cell--num">${formatNumber(p.weightKg)} kg</span>
+      <span class="pcard__cell pcard__cell--num">${formatWeight(p.weightKg)} kg</span>
       <span class="pcard__cell pcard__cell--num">${formatVolume(p.volumeM3)} m\u00B3</span>
       <span class="pcard__cell pcard__price">${formatMoney(p.price)}</span>
       <span class="pcard__cell">
@@ -732,7 +735,6 @@ const ProductSection = (() => {
     </article>`;
   }
 
-  // Syncs one row's DOM with the selection state (single place for visual state)
   function applyCardState(card) {
     const entry = selection.get(card.dataset.id);
     const selected = Boolean(entry);
@@ -752,14 +754,14 @@ const ProductSection = (() => {
 
   function updateCard(id) {
     const card = gridEl.querySelector(`.pcard[data-id="${CSS.escape(id)}"]`);
-    if (card) applyCardState(card);               // row may be hidden by the company filter
+    if (card) applyCardState(card);
   }
 
   function renderGrid() {
     const list = getProductsByCompany(activeCompanyId);
     gridEl.innerHTML = list.length
       ? headHtml() + list.map(cardHtml).join("")
-      : `<p class="ps-empty">No products available for this company.</p>`;
+      : `<p class="ps-empty">No products available${activeCompanyId ? " for this company" : ""}.</p>`;
     gridEl.querySelectorAll(".pcard").forEach((card) => applyCardState(card));
     gridEl.scrollTop = 0;
     metaEl.textContent = `Showing ${list.length} of ${PRODUCTS.length} products`;
@@ -771,7 +773,7 @@ const ProductSection = (() => {
     const selectedHere = list.filter((p) => selection.has(p.id)).length;
     const rows = [
       ["Showing", company ? company.name : "All companies", ""],
-      ["Location", company ? company.location : "Multiple", ""],
+      ["Company ID", company ? `#${company.id}` : "All", ""],
       ["Products listed", list.length, ""],
       ["Selected here", selectedHere, " company-info__row--accent"]
     ];
@@ -781,10 +783,10 @@ const ProductSection = (() => {
   }
 
   function renderSummary() {
-    const t = calculateTotals();                  // always from ALL selected products
+    const t = calculateTotals();
     const values = {
       count:  String(t.count),
-      weight: `${formatNumber(t.weightKg)} kg`,
+      weight: `${formatWeight(t.weightKg)} kg`,
       volume: `${formatVolume(t.volumeM3)} m\u00B3`,
       value:  formatMoney(t.value)
     };
@@ -794,7 +796,7 @@ const ProductSection = (() => {
   }
 
   function onCompanyChange(companyId) {
-    activeCompanyId = companyId;                  // selection is NOT touched
+    activeCompanyId = companyId;
     renderGrid();
     renderCompanyInfo();
   }
@@ -822,9 +824,8 @@ const ProductSection = (() => {
     });
     companySelect.init();
 
-    // One delegated listener each for the whole grid
     gridEl.addEventListener("click", (event) => {
-      if (event.target.closest(".pcard__mandatory")) return;   // Mandatory control has its own handler
+      if (event.target.closest(".pcard__mandatory")) return;
       const card = event.target.closest(".pcard");
       if (card) toggleProduct(card.dataset.id);
     });
@@ -841,19 +842,19 @@ const ProductSection = (() => {
 
   return {
     init,
-    getSelectedProducts,   // ProductSection.getSelectedProducts() -> [{...product, companyName, mandatory}]
-    calculateTotals,       // ProductSection.calculateTotals()     -> { count, weightKg, volumeM3, value }
+    getSelectedProducts,
+    calculateTotals,
     isSelected,
     selectProduct,
     deselectProduct,
     setMandatory
   };
 })();
+
 /* ===================== Section 4: Shipment Summary & Start Processing ===================== */
 
 const SHIPMENT_STORAGE_KEY = "logiroute.shipment";   // read this key on the Processing page
 
-/* Extra icons for Section 4 (Section 2/3 ICONS object is not edited) */
 Object.assign(ICONS, {
   alert:       '<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v5M12 17.5h.01"/>',
   checkCircle: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-5.5"/>'
@@ -862,16 +863,15 @@ Object.assign(ICONS, {
 const ShipmentSection = (() => {
   let gridEl, statusEl, btnEl, msgEl;
 
-  /* ----- Read everything from the existing sections (no duplicate state) ----- */
   function collect() {
     const containers = SelectionSection.getSelectedContainers();
     const warehouses = SelectionSection.getSelectedWarehouses();
-    const products   = ProductSection.getSelectedProducts();   // includes hidden (filtered-out) selections
+    const products   = ProductSection.getSelectedProducts();
     const totals     = ProductSection.calculateTotals();
 
     const companyMap = new Map();
     products.forEach((p) => {
-      const company = COMPANY_BY_ID[p.companyId];
+      const company = companyOf(p.companyId);
       const entry = companyMap.get(company.id) || { ...company, selectedProductCount: 0 };
       entry.selectedProductCount += 1;
       companyMap.set(company.id, entry);
@@ -891,13 +891,12 @@ const ShipmentSection = (() => {
       },
       warehouseCapacity: {
         count: warehouses.length,
-        totalM3: round3(warehouses.reduce((s, w) => s + w.totalCapacityM3, 0)),
-        availableM3: round3(warehouses.reduce((s, w) => s + w.availableCapacityM3, 0))
+        weightKg: round3(warehouses.reduce((s, w) => s + w.maxWeightKg, 0)),
+        volumeM3: round3(warehouses.reduce((s, w) => s + w.maxVolumeM3, 0))
       }
     };
   }
 
-  /* ----- Summary rendering ----- */
   function blockHtml(b) {
     const stats = b.stats.map(([label, value]) =>
       `<div class="ss-stat"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
@@ -923,20 +922,20 @@ const ShipmentSection = (() => {
       blockHtml({
         icon: "container", title: "Containers", count: d.containers.length, empty: "No container selected",
         stats: [
-          ["Weight capacity", `${formatNumber(d.containerCapacity.weightKg)} kg`],
+          ["Weight capacity", `${formatWeight(d.containerCapacity.weightKg)} kg`],
           ["Volume capacity", `${formatVolume(d.containerCapacity.volumeM3)} m\u00B3`]
         ],
-        chips: d.containers.map((c) => ({ text: `${c.id} \u00B7 ${c.type}` }))
+        chips: d.containers.map((c) => ({ text: `#${c.id} \u00B7 ${c.type}` }))
       }),
       blockHtml({
         icon: "warehouse", title: "Warehouses", count: d.warehouses.length, empty: "No warehouse selected",
         stats: [
-          ["Free capacity",  `${formatVolume(d.warehouseCapacity.availableM3)} m\u00B3`],
-          ["Total capacity", `${formatVolume(d.warehouseCapacity.totalM3)} m\u00B3`]
+          ["Max weight", `${formatWeight(d.warehouseCapacity.weightKg)} kg`],
+          ["Max volume", `${formatVolume(d.warehouseCapacity.volumeM3)} m\u00B3`]
         ],
         chips: d.warehouses.map((w) => ({
-          text: `${w.name} \u00B7 ${w.location}`,
-          title: `${w.id} \u00B7 ${w.name}, ${w.location} \u00B7 ${formatNumber(w.availableCapacityM3)} m\u00B3 free`
+          text: w.name,
+          title: `#${w.id} \u00B7 ${w.name} \u00B7 ${formatWeight(w.maxWeightKg)} kg \u00B7 ${formatVolume(w.maxVolumeM3)} m\u00B3`
         }))
       }),
       blockHtml({
@@ -951,7 +950,7 @@ const ShipmentSection = (() => {
         icon: "boxCheck", title: "Products", count: d.totals.count, empty: "No product selected", twoCols: true,
         stats: [
           ["Mandatory", String(d.mandatoryCount)],
-          ["Weight", `${formatNumber(d.totals.weightKg)} kg`],
+          ["Weight", `${formatWeight(d.totals.weightKg)} kg`],
           ["Volume", `${formatVolume(d.totals.volumeM3)} m\u00B3`],
           ["Value",  formatMoney(d.totals.value)]
         ],
@@ -969,7 +968,6 @@ const ShipmentSection = (() => {
       : "Live from Container, Warehouse and Product selections";
   }
 
-  /* ----- Messages ----- */
   function showMessage(type, title, lines) {
     msgEl.dataset.type = type;
     msgEl.innerHTML = `<strong class="shipment-msg__title">${icon(type === "ok" ? "checkCircle" : "alert")}<span>${escapeHtml(title)}</span></strong>
@@ -982,7 +980,6 @@ const ShipmentSection = (() => {
     msgEl.innerHTML = "";
   }
 
-  /* ----- Validation ----- */
   function validate(d) {
     const missing = [];
     if (!d.containers.length) missing.push("No container selected. Select at least one container.");
@@ -994,8 +991,8 @@ const ShipmentSection = (() => {
       const overW = round3(d.totals.weightKg - d.containerCapacity.weightKg);
       const overV = round3(d.totals.volumeM3 - d.containerCapacity.volumeM3);
       if (overW > 0) {
-        capacity.push(`Weight exceeds container capacity by ${formatNumber(overW)} kg `
-          + `(products ${formatNumber(d.totals.weightKg)} kg, containers ${formatNumber(d.containerCapacity.weightKg)} kg).`);
+        capacity.push(`Weight exceeds container capacity by ${formatWeight(overW)} kg `
+          + `(products ${formatWeight(d.totals.weightKg)} kg, containers ${formatWeight(d.containerCapacity.weightKg)} kg).`);
       }
       if (overV > 0) {
         capacity.push(`Volume exceeds container capacity by ${formatVolume(overV)} m\u00B3 `
@@ -1015,7 +1012,6 @@ const ShipmentSection = (() => {
     return { ok: true };
   }
 
-  /* ----- Shipment data for the next processing stage ----- */
   function buildShipment(d) {
     return {
       id: `SHP-${Date.now()}`,
@@ -1023,10 +1019,10 @@ const ShipmentSection = (() => {
       containers: d.containers.map((c) => ({ ...c })),
       warehouses: d.warehouses.map((w) => ({ ...w })),
       companies: d.companies,
-      products: d.products,                                       // each has companyId, companyName, mandatory
+      products: d.products,
       mandatoryProductIds: d.products.filter((p) => p.mandatory).map((p) => p.id),
       totals: {
-        products: d.totals,                                       // { count, weightKg, volumeM3, value }
+        products: d.totals,
         mandatoryCount: d.mandatoryCount,
         containerCapacity: d.containerCapacity,
         warehouseCapacity: d.warehouseCapacity
@@ -1044,7 +1040,6 @@ const ShipmentSection = (() => {
     }
   }
 
-  /* ----- Start Shipment Processing ----- */
   function start() {
     const d = collect();
     const result = validate(d);
@@ -1066,7 +1061,7 @@ const ShipmentSection = (() => {
 
     const page = PAGES["processing"];
     if (page && page.ready && page.url) {
-      window.location.href = page.url;              // connects automatically once the page is ready
+      window.location.href = page.url;
       return;
     }
     showMessage("ok", "Shipment ready for processing", [
@@ -1077,7 +1072,7 @@ const ShipmentSection = (() => {
   }
 
   function onSelectionChange() {
-    clearMessage();                                 // an old message may no longer be true
+    clearMessage();
     render();
   }
 
@@ -1089,21 +1084,40 @@ const ShipmentSection = (() => {
     if (!gridEl || !btnEl) return;
 
     btnEl.addEventListener("click", start);
-    document.addEventListener("selection:change", onSelectionChange);   // containers / warehouses
-    document.addEventListener("products:change", onSelectionChange);    // products / Mandatory
+    document.addEventListener("selection:change", onSelectionChange);
+    document.addEventListener("products:change", onSelectionChange);
 
     render();
   }
 
-  return {
-    init,
-    getShipment,          // ShipmentSection.getShipment()          -> current shipment object
-    loadStoredShipment    // ShipmentSection.loadStoredShipment()   -> object saved in sessionStorage
-  };
+  return { init, getShipment, loadStoredShipment };
 })();
-document.addEventListener("DOMContentLoaded", () => {
-  Navigation.init();
+
+/* ===================== App start: load API data, then init sections ===================== */
+async function bootstrap() {
+  const gridEl = document.getElementById("product-grid");
+  const metaEl = document.getElementById("product-meta");
+
+  gridEl.innerHTML = `<p class="ps-empty">Loading data from server...</p>`;
+  metaEl.textContent = "";
+
+  try {
+    await fetchAllData();
+  } catch (error) {
+    gridEl.innerHTML = `<div class="ps-empty ps-error">
+      <p>Data load nahi ho saka: ${escapeHtml(error.message)}</p>
+      <button type="button" class="ps-retry" id="retry-btn">Retry</button>
+    </div>`;
+    document.getElementById("retry-btn").addEventListener("click", bootstrap);
+    return;
+  }
+
   SelectionSection.init();
   ProductSection.init();
   ShipmentSection.init();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  Navigation.init();
+  bootstrap();
 });

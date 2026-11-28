@@ -31,7 +31,7 @@ async function GetData(params) {
 async function main() {
 
     const data = await GetData({
-        tablename: "Containers",
+        tablename: "Products",
         Whereclause: ""
     });
 

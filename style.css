@@ -1145,3 +1145,52 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .nav-btn { transition: none; }
 }
+
+/* ===================== LogiRoute – Bigger select boxes + API states =====================
+   Is poore block ko style.css ke BILKUL END mein paste karein
+   (Responsive section ke baad), taake purani values override ho jayen. */
+
+/* ---------- Label ---------- */
+.ms__label { font-size: 16px; gap: 8px; margin-bottom: 6px; }
+.ms__label .icon { width: 20px; height: 20px; }
+
+/* ---------- Select box (control) ---------- */
+.ms__control { min-height: 50px; padding: 5px 8px 5px 10px; border-radius: 6px; }
+.ms__tags { max-height: 84px; gap: 6px; }
+.ms__input { height: 34px; font-size: 16px; flex: 1 1 120px; }
+.ms__toggle { width: 34px; height: 34px; }
+.ms__toggle .icon { width: 20px; height: 20px; }
+
+/* ---------- Selected tags ---------- */
+.ms__chip { font-size: 14px; padding: 4px 6px 4px 10px; gap: 6px; border-radius: 5px; }
+.ms__chip-remove { width: 20px; height: 20px; }
+.ms__chip-remove .icon { width: 13px; height: 13px; }
+
+/* ---------- Dropdown menu ---------- */
+.ms__menu-bar { font-size: 14px; padding: 8px 12px; }
+.ms__options { max-height: min(340px, 45vh); padding: 6px; }
+.ms__option { gap: 12px; padding: 9px 10px; }
+.ms__option-icon { width: 40px; height: 40px; border-radius: 6px; }
+.ms__option-icon .icon { width: 22px; height: 22px; }
+.ms__option-title { font-size: 15px; }
+.ms__option-id { font-size: 13px; }
+.ms__option-stats { font-size: 13px; gap: 2px 16px; }
+.ms__stat { gap: 5px; }
+.ms__stat .icon { width: 15px; height: 15px; }
+.ms__option-check .icon { width: 20px; height: 20px; }
+.ms__empty { font-size: 14px; padding: 16px 12px; }
+
+/* ---------- Loading / error state ---------- */
+.ps-error p { margin: 0 0 10px; }
+.ps-retry {
+  padding: 8px 18px;
+  font: inherit;
+  font-weight: 800;
+  color: var(--color-black);
+  background: var(--color-orange);
+  border: 1.5px solid var(--color-black);
+  border-radius: 5px;
+  box-shadow: 0 2px 0 var(--color-black);
+  cursor: pointer;
+}
+.ps-retry:hover { filter: brightness(1.08); }
